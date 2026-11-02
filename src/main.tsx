@@ -5,6 +5,7 @@ import { barriers, strategies, strategyOptions, seedData, uid, patientStatus, st
 import * as service from './services';
 import './styles.css';
 import { SmsTestPanel } from './SmsTestPanel';
+import { SharedWorkspace, SharedPatientPage } from './SharedCare';
 
 type Mutation = (draft: AppData) => void;
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
@@ -43,13 +44,15 @@ function App() {
   const screen = route.split('/')[1] || 'overview';
   const send = (id: string, kind: Message['kind']) => { let messageId = ''; if (mutate(d => { messageId = service.createMessage(d, id, kind).id; })) { setSms(messageId); notify('Demo message prepared. No real SMS was sent.'); } };
   const exportData = () => { const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'ktx-connect-demo-data.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); notify('Demo data exported.'); };
-  const navItems = [{ id:'overview', label:'Overview', icon:'grid' }, { id:'patients', label:'Patients', icon:'people' }, { id:'messages', label:'Demo messages', icon:'message' }, { id:'reports', label:'Insights', icon:'chart' }, { id:'settings', label:'Settings', icon:'settings' }];
+  const navItems = [{ id:'overview', label:'Overview', icon:'grid' }, { id:'shared', label:'Connected care', icon:'shield' }, { id:'patients', label:'Patients', icon:'people' }, { id:'messages', label:'Demo messages', icon:'message' }, { id:'reports', label:'Insights', icon:'chart' }, { id:'settings', label:'Settings', icon:'settings' }];
+  if (route.startsWith('/access/')) return <SharedPatientPage key={route} token={route.split('/')[2] || ''}/>;
   return <><a className="skip" href="#main" onClick={e=>{e.preventDefault();document.getElementById('main')?.focus();}}>Skip to content</a><div className={`app-shell ${isPatient ? 'patient-shell' : ''}`}>
     {!isPatient && <aside className="sidebar"><Brand/><div className="workspace-label">CARE TEAM WORKSPACE</div><nav aria-label="Main navigation">{navItems.map(n => <a key={n.id} href={`#/${n.id}`} aria-current={screen === n.id ? 'page' : undefined} className={screen === n.id ? 'active' : ''}><Icon name={n.icon}/><span>{n.label}</span>{n.id === 'messages' && data.messages.length > 0 && <b>{data.messages.length}</b>}</a>)}</nav><div className="sidebar-bottom"><div className="support-card"><span className="support-leaf"><Icon name="heart" size={23}/></span><h3>A little support.<br/>A lasting difference.</h3><p>Helping families build routines that fit their lives.</p><button onClick={() => nav('/patient')} className="text-link">Explore the patient view <Icon name="arrow" size={15}/></button></div><button className="install-side" onClick={() => setInstallOpen(true)}><Icon name="download" size={18}/> Install app <Icon name="plus" size={15}/></button><div className="team-profile"><span className="profile-avatar">CT</span><div><strong>Your care team</strong><small>Prototype workspace</small></div><Icon name="shield" size={18}/></div></div></aside>}
     <div className="main-shell"><header className="topbar">{isPatient ? <Brand/> : <div className="breadcrumb">Workspace <span>/</span> <strong>{selected ? 'Patient detail' : navItems.find(n=>n.id===screen)?.label || 'Overview'}</strong></div>}<div className="top-actions"><span className="demo-pill"><span className="dot"/>Demo · fictional data</span><div className="view-switch" aria-label="Switch workspace"><button className={!isPatient ? 'selected' : ''} onClick={() => nav('/overview')}>Care team</button><button className={isPatient ? 'selected' : ''} onClick={() => nav('/patient')}>Patient</button></div><button className="icon-btn install-top" aria-label="Install app" onClick={()=>setInstallOpen(true)}><Icon name="download"/></button></div></header>
     {(!online || storageError) && <div className="connection-banner" role="status">{!online ? 'You are offline. The cached demo and locally saved data are available.' : 'Browser storage is unavailable. Changes will only last while this page stays open.'}</div>}
     <main id="main" tabIndex={-1}>
       {isPatient ? <PatientArea key={`${patient.id}-${route}`} data={data} patient={patient} route={route} message={currentMessage} mutate={mutate} nav={nav} notify={notify} setPatientId={setPatientId}/>
+      : screen === 'shared' ? <SharedWorkspace/>
       : selected ? <PatientDetail patient={selected} data={data} mutate={mutate} send={send} notify={notify} nav={nav}/>
       : screen === 'overview' || screen === 'patients' ? <Dashboard data={data} patientsOnly={screen==='patients'} nav={nav} onEnroll={()=>setEnroll(true)} advance={()=>{mutate(service.advanceDemo); notify('Demo advanced 7 days. Due check-in messages are ready.');}}/>
       : screen === 'messages' ? <Messages data={data} open={setSms}/>

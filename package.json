@@ -7,8 +7,9 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build --outDir .sites-runtime/client-dist && node scripts/build-sw.mjs .sites-runtime/client-dist && node scripts/build-worker.mjs",
     "preview": "node scripts/preview-worker.mjs",
-    "test": "node --experimental-strip-types --test tests/domain.test.ts tests/sms.test.mjs"
+    "test": "node --experimental-strip-types --test tests/domain.test.ts tests/sms.test.mjs tests/care.test.mjs",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": { "react": "^19.2.0", "react-dom": "^19.2.0" },
-  "devDependencies": { "@types/react": "^19.2.0", "@types/react-dom": "^19.2.0", "typescript": "~5.9.3", "vite": "^7.1.0" }
+  "devDependencies": { "@types/react": "^19.2.0", "@types/react-dom": "^19.2.0", "typescript": "~5.9.3", "vite": "^7.1.0", "drizzle-kit": "0.31.10", "drizzle-orm": "0.45.2" }
 }

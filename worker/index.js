@@ -1,3 +1,4 @@
+import { handleCare } from './care.js'; // @build-care-module
 // Sites Worker ESM: the build injects compiled React assets into this module.
 // All SMS credentials and the allowed recipient are server-side environment values.
 const APP_ASSETS = null; // @build-assets
@@ -87,6 +88,7 @@ export default {
   async fetch(request,env,ctx) {
     void ctx;
     const url=new URL(request.url);
+    if(url.pathname.startsWith('/api/care/')||url.pathname.startsWith('/api/patient/'))return handleCare(request,env);
     if(url.pathname.startsWith('/api/sms/'))return handleSms(request,env);
     if(url.pathname.startsWith('/api/'))return json({ok:false,error:'Not found.'},404);
     if(request.method!=='GET'&&request.method!=='HEAD')return new Response('Method not allowed',{status:405});

@@ -8,7 +8,8 @@ for(const f of readdirSync(root,{recursive:true,withFileTypes:true}).filter(f=>f
   if(relative.startsWith('.'))continue;
   assets['/'+relative]={type:types[path.extname(filename)]||'application/octet-stream',data:readFileSync(filename).toString('base64')};
 }
-const template=readFileSync('worker/index.js','utf8');const marker='const APP_ASSETS = null; // @build-assets';
+const careModule=readFileSync('worker/care.js','utf8');
+const template=readFileSync('worker/index.js','utf8').replace("import { handleCare } from './care.js'; // @build-care-module",careModule);const marker='const APP_ASSETS = null; // @build-assets';
 if(!template.includes(marker))throw new Error('Worker asset insertion point missing.');
 const manifest=JSON.parse(readFileSync('.openai/hosting.json','utf8'));if(manifest.static)throw new Error('Remove the static hosting declaration before building this Worker.');
 mkdirSync('dist/server',{recursive:true});mkdirSync('dist/.openai',{recursive:true});

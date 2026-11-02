@@ -1,3 +1,19 @@
+# Shared workflow verification — November 2, 2026
+
+This current section supersedes the historical no-backend/no-delivery statements below.
+
+- All 16 tests pass: four original domain tests, seven SMS tests and five shared-care integration tests using real SQLite and the generated migration.
+- Shared tests cover owner authorization; hash-only tokens; minimal no-account form access; assessment → plan → check-in; validation without consuming a token; safe retries; concurrent submission; exact 72-hour expiry; replacement/revocation; and Trial rejection without a provider call.
+- TypeScript and the production Vite/Worker build pass.
+- Browser walkthrough with the local Worker and real SQLite: create fictional Alex Demo → separate patient page → four assessment steps → submit → owner receives response → save plan → separate check-in page shows plan → send green response/note → reload owner workspace → saved response remains.
+- Inspected the shared interface at desktop and 390px width, including the patient check-in form. Screenshots: `shared-care-desktop.png`, `shared-care-response.png`, `shared-patient-mobile.png`.
+- Preview authentication is a local owner stub. This walkthrough does not verify production sign-in or a physical second device. Hosted D1 deployment is a separate check.
+- One generic Twilio trial-template message was confirmed delivered during account setup. Custom SMS containing a patient link remains blocked by the configured Trial mode; no custom-link SMS was sent.
+- No automatic follow-up scheduler, physical PWA installation or verified offline reload. Shared submissions need connectivity.
+
+---
+
+## Historical verification notes
 # Verification record
 
 ## Passed
@@ -38,3 +54,4 @@ Preview screenshots: `dashboard-desktop.jpg` and `patient-mobile.jpg`.
 - One live trial-template request to the user-authorized destination was rejected with HTTP 403 / provider code 572003: the request must use the trial From number assigned to that recipient. No message SID was created and no SMS was accepted.
 - Added explicit `TWILIO_TRIAL_TEMPLATE=sms_internal_alerts` support without appending custom text. The recipient-assigned `TWILIO_FROM_NUMBER` is still required. Trial receipt verification checks the configured sender and recipient; uncertain trial sends need a message SID from Twilio logs.
 - Seven SMS tests plus four workflow tests now pass (11 total). Actual delivery remains unverified until the assigned trial sender is supplied and a request is accepted.
+

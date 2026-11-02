@@ -1,6 +1,6 @@
 # Real SMS test connection
 
-The application now has a server-side SMS API and an owner-only test panel in Settings. No SMS provider credentials were present during implementation. No actual message has been sent or delivered.
+The application has a server-side SMS API and an owner-only test panel in Settings. One real generic trial-template SMS was confirmed delivered during setup on November 2, 2026. This was not a patient link. Credentials are stored only in hosted runtime secrets.
 
 ## Runtime configuration
 
@@ -28,7 +28,9 @@ For the newer trial flow, open Messaging → Try out SMS in Twilio Console, sele
 4. Preserve its message SID/reference. Check delivery status without sending again.
 5. Only `delivered` is shown as confirmed delivery. `queued`, `accepted`, `sending`, and `sent` are not delivery confirmation.
 
-The fixed technical message contains no patient data or demo patient link. Patient records are still local to each browser, so existing assessment/check-in messages remain simulated. Real cross-device assessment links require a shared backend datastore and appropriate access controls, a separate next step.
+The fixed technical message contains no patient data or patient link. Connected care now has shared D1 storage and private assessment/check-in links. The configured newer Twilio Trial mode cannot send custom text containing those links, so that button remains disabled with a clear reason. Copy/open the link to test the shared workflow. The original local demo's messages remain simulated.
+
+The custom-link integration uses owner-only `/api/care/sms` and `/api/care/sms/status`, server-generated text and the authorized test recipient. A durable D1 outbox prevents duplicate requests with the same send reference; uncertain sends are never automatically retried. Live custom-link sending requires provider eligibility and sender setup, and has not been verified. Do not remove the trial setting merely to bypass a provider restriction.
 
 ## API and limits
 

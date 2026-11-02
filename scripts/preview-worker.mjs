@@ -1,8 +1,11 @@
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
 import worker from '../dist/server/index.js';
+import { localD1 } from './local-d1.mjs';
+import path from 'node:path';
 // Local preview sends no real messages unless explicit local credentials are supplied.
-const env={};
+const env={SMS_TEST_TO:'+15550000001',TWILIO_TRIAL_TEMPLATE:'sms_internal_alerts'};
+env.DB=localD1(path.resolve('.sites-runtime/care-preview.sqlite'));
 if(process.env.SMS_PREVIEW_CONFIG)Object.assign(env,JSON.parse(readFileSync(process.env.SMS_PREVIEW_CONFIG,'utf8')));
 const port=Number(process.env.PORT||5175);
 http.createServer(async(req,res)=>{
