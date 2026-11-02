@@ -14,10 +14,11 @@ Set the following values in the Site runtime environment, not browser code or th
 | `TWILIO_MESSAGING_SERVICE_SID` | Optional alternative to `TWILIO_FROM_NUMBER` (`MG…`) |
 | `SMS_TEST_TO` | Server-side allowlisted test recipient, already configured for this task |
 | `SMS_ADMIN_EMAIL` | Owner's trusted ChatGPT email, already configured for this task |
+| `TWILIO_TRIAL_TEMPLATE` | For the new trial flow, `sms_internal_alerts`; a recipient-assigned `TWILIO_FROM_NUMBER` is still required |
 
 The recipient and admin values are secrets and are not embedded in the app bundle. Redeploy after changing runtime configuration so the new revision is active. Keep the site's existing access audience: real SMS API routes independently require a signed-in owner, even if the website is public.
 
-For a trial account, verify the recipient in Twilio. A sender must satisfy Twilio/carrier requirements for US SMS; a trial or API key does not guarantee delivery. Use live credentials for an actual SMS: Twilio test credentials cannot deliver a real message.
+For the newer trial flow, open Messaging → Try out SMS in Twilio Console, select/verify the intended recipient, and copy the trial number assigned to that recipient as `TWILIO_FROM_NUMBER`. Set `TWILIO_TRIAL_TEMPLATE=sms_internal_alerts`. Twilio supplies the template text and does not permit arbitrary custom message bodies or appended references in this mode. The shared trial number may not appear in the account's IncomingPhoneNumbers list. Receipt checks require the returned message SID. For older trial accounts and production senders, preserve the conventional sender/compliance requirements. Use live credentials: Twilio test credentials cannot deliver a real message.
 
 ## Test
 

@@ -30,3 +30,11 @@ Preview screenshots: `dashboard-desktop.jpg` and `patient-mobile.jpg`.
 - The requested recipient and owner identity are stored in hosted runtime secrets, not source or client assets.
 - No Twilio account credentials or activated sender were available; no actual SMS has been sent. Live provider acceptance and delivery remain blocked on account setup.
 - The website's current public audience is preserved; the real SMS endpoints separately require the configured owner's trusted sign-in identity.
+
+## Live Twilio account setup and trial attempt
+
+- User-supplied credentials authenticated successfully against Twilio. Account is active and of type Trial. Credentials are stored as hosted server secrets, not source.
+- No dedicated SMS numbers or Messaging Services were listed for the account. The newer trial workflow assigns a shared sender per recipient through Twilio Console.
+- One live trial-template request to the user-authorized destination was rejected with HTTP 403 / provider code 572003: the request must use the trial From number assigned to that recipient. No message SID was created and no SMS was accepted.
+- Added explicit `TWILIO_TRIAL_TEMPLATE=sms_internal_alerts` support without appending custom text. The recipient-assigned `TWILIO_FROM_NUMBER` is still required. Trial receipt verification checks the configured sender and recipient; uncertain trial sends need a message SID from Twilio logs.
+- Seven SMS tests plus four workflow tests now pass (11 total). Actual delivery remains unverified until the assigned trial sender is supplied and a request is accepted.

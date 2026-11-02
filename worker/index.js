@@ -17,6 +17,8 @@ function configured(env) {
   if (env.SMS_TEST_TO && !E164.test(env.SMS_TEST_TO)) missing.push('valid SMS_TEST_TO (E.164)');
   if (env.TWILIO_FROM_NUMBER && !E164.test(env.TWILIO_FROM_NUMBER)) missing.push('valid TWILIO_FROM_NUMBER (E.164)');
   if (env.TWILIO_MESSAGING_SERVICE_SID && !/^MG[0-9a-f]{32}$/i.test(env.TWILIO_MESSAGING_SERVICE_SID)) missing.push('valid TWILIO_MESSAGING_SERVICE_SID');
+  if (env.TWILIO_TRIAL_TEMPLATE && env.TWILIO_TRIAL_TEMPLATE !== 'sms_internal_alerts') missing.push('supported TWILIO_TRIAL_TEMPLATE');
+  if (env.TWILIO_TRIAL_TEMPLATE && !env.TWILIO_FROM_NUMBER?.trim()) missing.push('TWILIO_FROM_NUMBER assigned to this recipient in Twilio Trial');
   return missing;
 }
 function authorize(request, env) {
@@ -35,20 +37,21 @@ export async function handleSms(request, env, fetcher = fetch) {
   const url = new URL(request.url);
   const denied = authorize(request,env); if (denied) return denied;
   const missing = configured(env);
-  if (url.pathname === '/api/sms/status' && request.method === 'GET') return json({ ok:true, configured:missing.length===0, missing, provider:'Twilio', recipient:mask(env.SMS_TEST_TO), message:TEST_TEXT, persistence:'local-demo-only', limitations:'The test sends a generic message only. Demo patient links do not synchronize to another device.' });
+  if (url.pathname === '/api/sms/status' && request.method === 'GET') return json({ ok:true, configured:missing.length===0, missing:[...new Set(missing)], provider:'Twilio', recipient:mask(env.SMS_TEST_TO), mode:env.TWILIO_TRIAL_TEMPLATE?'trial-template':'custom', message:env.TWILIO_TRIAL_TEMPLATE?'Twilio Trial template: Internal alerts. Twilio supplies the message text; this trial does not allow custom content.':TEST_TEXT, persistence:'local-demo-only', limitations:'The test sends a generic message only. Demo patient links do not synchronize to another device.' });
   if (!['/api/sms/test','/api/sms/receipt'].includes(url.pathname)) return json({ok:false,error:'Unknown SMS endpoint.'},404);
   if (missing.length) return json({ ok:false, code:'SMS_NOT_CONFIGURED', error:'SMS provider credentials are not configured. No message was sent.', missing },503);
   if (url.pathname === '/api/sms/receipt') {
     if (request.method !== 'GET') return json({ok:false,error:'Use GET for delivery status.'},405);
     const sid=url.searchParams.get('sid'); const requestId=url.searchParams.get('requestId');
     if ((!sid||!SID.test(sid)) && (!requestId||!UUID.test(requestId))) return json({ok:false,error:'A valid message SID or request reference is required.'},400);
+    if (env.TWILIO_TRIAL_TEMPLATE && (!sid || !SID.test(sid))) return json({ok:false,code:'TRIAL_SID_REQUIRED',error:'Trial templates cannot include a request reference. Check Twilio message logs for the SID before retrying an uncertain send.'},400);
     try {
       const endpoint=sid&&SID.test(sid)?`${base(env)}/${sid}.json`:`${base(env)}.json?${new URLSearchParams({To:env.SMS_TEST_TO,PageSize:'50'})}`;
       const r=await fetcher(endpoint,{headers:providerHeaders(env),signal:AbortSignal.timeout(12000)});
       const b=await r.json(); if (!r.ok) return json(providerFailure(b),502);
       const found=sid?b:b.messages?.find(m=>m.body===`${TEST_TEXT} Ref: ${requestId}`);
       if (!found) return json({ok:false,code:'NOT_FOUND_YET',error:'No matching provider record was found yet. This does not establish that no message was sent. Check Twilio logs before trying another send.'},404);
-      if(found.to!==env.SMS_TEST_TO||!found.body?.startsWith(TEST_TEXT)) return json({ok:false,error:'This is not an authorized test message.'},403);
+      if(found.to!==env.SMS_TEST_TO||(env.TWILIO_TRIAL_TEMPLATE?found.from!==env.TWILIO_FROM_NUMBER:!found.body?.startsWith(TEST_TEXT))) return json({ok:false,error:'This is not an authorized test message.'},403);
       return json(receipt(found,requestId,env));
     } catch { return json({ok:false,code:'STATUS_UNAVAILABLE',error:'Delivery status could not be checked. No new SMS was sent.'},502); }
   }
@@ -66,8 +69,8 @@ export async function handleSms(request, env, fetcher = fetch) {
   if(attempts.size>=250)return json({ok:false,code:'RATE_LIMITED',error:'Demo attempt limit reached. No message was sent.'},429);
   latestAttemptByOwner.set(owner,now);
   const attempt=(async()=>{
-    const form=new URLSearchParams({To:env.SMS_TEST_TO,Body:`${TEST_TEXT} Ref: ${input.requestId}`});
-    if(env.TWILIO_MESSAGING_SERVICE_SID)form.set('MessagingServiceSid',env.TWILIO_MESSAGING_SERVICE_SID);else form.set('From',env.TWILIO_FROM_NUMBER);
+    const form=new URLSearchParams({To:env.SMS_TEST_TO,Body:env.TWILIO_TRIAL_TEMPLATE||`${TEST_TEXT} Ref: ${input.requestId}`});
+    if(env.TWILIO_MESSAGING_SERVICE_SID&&!env.TWILIO_TRIAL_TEMPLATE)form.set('MessagingServiceSid',env.TWILIO_MESSAGING_SERVICE_SID);else form.set('From',env.TWILIO_FROM_NUMBER);
     try {
       const r=await fetcher(`${base(env)}.json`,{method:'POST',headers:providerHeaders(env),body:form,signal:AbortSignal.timeout(12000)});
       let b;try{b=await r.json();}catch{return {ok:false,code:'DELIVERY_UNKNOWN',requestId:input.requestId,error:'The provider response could not be read. Do not resend automatically; check the provider logs or receipt.'};}

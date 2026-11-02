@@ -33,3 +33,9 @@ test('delivery check verifies the authorized recipient and test body',async()=>{
  const response=await handleSms(make(`/api/sms/receipt?sid=${sid}&requestId=${id}`),env,async()=>Response.json({sid,to:env.SMS_TEST_TO,body:message,status:'delivered'}));assert.equal((await response.json()).delivered,true);
  const denied=await handleSms(make(`/api/sms/receipt?sid=${sid}`),env,async()=>Response.json({sid,to:'+15550000009',body:message,status:'delivered'}));assert.equal(denied.status,403);
 });
+test('new trial flow uses an exact provider template and the recipient-assigned sender',async()=>{
+ const trialEnv={...env,SMS_ADMIN_EMAIL:'trial@example.invalid',TWILIO_TRIAL_TEMPLATE:'sms_internal_alerts'};let sentBody='';
+ const response=await handleSms(make('/api/sms/test',post(),trialEnv.SMS_ADMIN_EMAIL),trialEnv,async(url,opts)=>{const fields=new URLSearchParams(opts.body);sentBody=fields.get('Body');assert.equal(fields.get('From'),trialEnv.TWILIO_FROM_NUMBER);return Response.json({sid:'SM'+'d'.repeat(32),status:'queued'});});
+ assert.equal(response.status,202);assert.equal(sentBody,'sms_internal_alerts');
+ const receipt=await handleSms(make('/api/sms/receipt?requestId='+crypto.randomUUID(),{},trialEnv.SMS_ADMIN_EMAIL),trialEnv);assert.equal(receipt.status,400);
+});
