@@ -19,3 +19,14 @@
 - The clinical team's complete validated assessment and approved intervention library have not been supplied. The included questions are explicitly labeled illustrative.
 
 Preview screenshots: `dashboard-desktop.jpg` and `patient-mobile.jpg`.
+
+## Server-side SMS addition
+
+- Production build now outputs a Sites Worker containing the React/PWA assets and owner-only SMS API routes.
+- Six additional automated SMS tests passed (10 tests total). Provider acceptance/delivery fixtures are mocked; these are not live delivery evidence.
+- Verified unauthenticated and non-owner requests are denied, client recipient overrides and cross-origin sends are rejected, and missing credentials produce no outbound provider request.
+- Verified repeated requests reuse an in-isolate receipt and uncertain transport outcomes are not automatically retried.
+- Browser Settings preview shows missing configuration, a disabled send button and a working Refresh setup action.
+- The requested recipient and owner identity are stored in hosted runtime secrets, not source or client assets.
+- No Twilio account credentials or activated sender were available; no actual SMS has been sent. Live provider acceptance and delivery remain blocked on account setup.
+- The website's current public audience is preserved; the real SMS endpoints separately require the configured owner's trusted sign-in identity.

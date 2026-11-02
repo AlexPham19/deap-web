@@ -1,8 +1,9 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-const files = readdirSync('dist', { recursive: true, withFileTypes: true }).filter(f => f.isFile()).map(f => path.relative('dist', path.join(f.parentPath, f.name)).replaceAll('\\','/')).filter(f => f !== 'sw.js');
-const revision = createHash('sha256'); for (const f of files) revision.update(readFileSync(path.join('dist', f)));
+const output = process.argv[2] || 'dist';
+const files = readdirSync(output, { recursive: true, withFileTypes: true }).filter(f => f.isFile()).map(f => path.relative(output, path.join(f.parentPath, f.name)).replaceAll('\\','/')).filter(f => f !== 'sw.js');
+const revision = createHash('sha256'); for (const f of files) revision.update(readFileSync(path.join(output, f)));
 const name = `ktx-connect-${revision.digest('hex').slice(0, 12)}`;
 const assets = files.map(f => '/' + f);
 const sw = `const CACHE=${JSON.stringify(name)};const ASSETS=${JSON.stringify(assets)};
@@ -10,4 +11,4 @@ self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(async ca
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('ktx-connect-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==self.location.origin)return;if(e.request.mode==='navigate'){e.respondWith(fetch(e.request).then(async r=>{if(r.ok&&!r.redirected&&r.headers.get('content-type')?.includes('text/html')){const c=await caches.open(CACHE);await c.put('/index.html',r.clone());}return r;}).catch(()=>caches.match('/index.html')));return;}if(ASSETS.includes(u.pathname)){e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));}});
 `;
-writeFileSync('dist/sw.js', sw); console.log(`PWA service worker generated: ${assets.length} cached files (${name}).`);
+writeFileSync(path.join(output,'sw.js'), sw); console.log(`PWA service worker generated: ${assets.length} cached files (${name}).`);

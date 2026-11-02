@@ -56,10 +56,12 @@ You can also use Patient mode and its profile selector for a direct walkthrough 
 `src/domain.ts` defines records, seed data, labels, status rules and token state.
 `src/services.ts` owns mutations and localStorage access. Replace these functions with authenticated API calls when adding a backend. Keep SMS provider secrets in server-side code only.
 `src/main.tsx` provides the care team and patient flows. `src/styles.css` defines responsive layouts.
+`worker/index.js` provides authenticated server-side SMS test routes and serves the embedded React/PWA assets. The build produces the Sites Worker ESM entrypoint `dist/server/index.js`.
+`src/SmsTestPanel.tsx` provides the owner-only real SMS test panel. See [SMS setup](docs/SMS_SETUP.md) for the runtime secrets and delivery verification procedure.
 `scripts/build-sw.mjs` generates a cache-versioned service worker from the compiled files.
 
-localStorage is per browser/origin, not a shared database. Patient links refer to local records: they cannot transfer or synchronize records to another device. Installed apps may use a different storage context depending on the platform. No real SMS, notifications, alarms, background scheduler, authentication or clinician contact is implemented. Virtual time advances only when requested in the demo.
+localStorage is per browser/origin, not a shared database. Patient links refer to local records: they cannot transfer or synchronize records to another device. Installed apps may use a different storage context depending on the platform. Profile-related SMS remains simulated. The separate owner-only technical SMS test can send a real generic message once a live Twilio account and sender are configured. No live provider credentials were available at implementation, so real sending/delivery has not been verified. There are no device alarms or background scheduler. Virtual time advances only when requested in the demo.
 
 Sample questions and strategies are illustrative, not the full validated 14-item BAT or approved MAPS content. The original material must be obtained from the clinical team before clinical use. Patient-selected reminder times are preferences, not medication instructions. A missing check-in is never classified as a missed dose; green responses are self-reports, not verified adherence. Care team plans require clinician agreement; no medicine or dose changes are generated.
 
-The native Site source repository preserves this project and its deployment identity. `.openai/hosting.json` declares the static output directory (`dist`). No database is provisioned.
+The native Site source repository preserves this project and its deployment identity. `.openai/hosting.json` retains the Site ID; the server build replaces static-only hosting with a Worker so runtime secrets are available only server-side. No database is provisioned.
