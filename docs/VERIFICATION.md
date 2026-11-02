@@ -7,7 +7,9 @@ This current section supersedes the historical no-backend/no-delivery statements
 - TypeScript and the production Vite/Worker build pass.
 - Browser walkthrough with the local Worker and real SQLite: create fictional Alex Demo → separate patient page → four assessment steps → submit → owner receives response → save plan → separate check-in page shows plan → send green response/note → reload owner workspace → saved response remains.
 - Inspected the shared interface at desktop and 390px width, including the patient check-in form. Screenshots: `shared-care-desktop.png`, `shared-care-response.png`, `shared-patient-mobile.png`.
-- Preview authentication is a local owner stub. This walkthrough does not verify production sign-in or a physical second device. Hosted D1 deployment is a separate check.
+- Preview authentication is a local owner stub. A separate hosted check confirmed the real owner browser session can create a fictional Jordan Prototype record, issue an assessment link, receive the completed assessment and save a plan.
+- Hosted D1 binding `DB` contains `care_patients`, `care_tokens` and `care_outbox`. Unauthenticated owner API requests return 401; invalid patient tokens return 404. A valid token opens with HTTP 200 without cookies or Authorization, exposing only the form fields.
+- A separate HTTP client with no cookies or Authorization submitted the hosted check-in successfully. The owner browser showed that response after reload. Screenshot: `shared-care-hosted.png`. This verifies separate-client server persistence; a physical second phone was not tested.
 - One generic Twilio trial-template message was confirmed delivered during account setup. Custom SMS containing a patient link remains blocked by the configured Trial mode; no custom-link SMS was sent.
 - No automatic follow-up scheduler, physical PWA installation or verified offline reload. Shared submissions need connectivity.
 
