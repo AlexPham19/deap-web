@@ -2,6 +2,13 @@
 
 An installable, responsive React + TypeScript web app based on the supplied DEAP one-pager and KTx-CONNECT demo. Use fictional clinical details. The patient interface is in plain English.
 
+## Live demo
+
+- [Open KTx-CONNECT](https://ktx-connect-deap-alex.coppercarp65.chatgpt.site/)
+- [Open the Connected care workspace](https://ktx-connect-deap-alex.coppercarp65.chatgpt.site/#/shared) — requires the configured owner's ChatGPT sign-in.
+
+The public demo was checked and returned HTTP 200 on November 4, 2026. Patient assessment/check-in links work without an account; only someone with a valid private link can open the corresponding form. Hosting availability may change independently of this repository.
+
 ## Shared workflow
 
 Open **Connected care** (`/#/shared`) and sign in with the configured owner's ChatGPT account. This workspace uses a shared D1 database; the original local demo remains separate.
@@ -20,6 +27,15 @@ Links expire after 72 real hours, are consumed when a response is saved, and can
 
 Requirements: Node.js 22.13+ or 24+, npm, a modern browser. Node's SQLite API is used only for the local preview/tests; production uses D1.
 
+Clone the project:
+
+```powershell
+git clone https://github.com/AlexPham19/deap-web.git
+cd deap-web
+```
+
+Install, verify and run:
+
 ```powershell
 npm.cmd ci
 npm.cmd test
@@ -28,6 +44,8 @@ npm.cmd run preview
 ```
 
 Open `http://127.0.0.1:5175/#/shared`. Preview uses a clearly labeled local owner identity stub, a fictional phone fixture and persistent SQLite in ignored `.sites-runtime/care-preview.sqlite`. It does not provide production authentication or live SMS credentials. `npm.cmd run dev` is suitable for UI work; the Vite server alone does not host the shared APIs.
+
+On macOS/Linux, use `npm` in place of `npm.cmd`. No SMS credentials are needed for the local workflow. `.env.example` lists the hosted configuration keys; set actual values through your hosting provider's server-side runtime settings. The local preview supports an explicit `SMS_PREVIEW_CONFIG` JSON file as described in [SMS setup](docs/SMS_SETUP.md).
 
 ## Installation and platforms
 
