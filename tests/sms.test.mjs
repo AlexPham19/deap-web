@@ -1,15 +1,16 @@
 import test from 'node:test';
+import {localD1} from '../scripts/local-d1.mjs';
 import assert from 'node:assert/strict';
 import { handleSms } from '../worker/index.js';
-const env={SMS_ADMIN_EMAIL:'owner@example.invalid',SMS_TEST_TO:'+15550000001',TWILIO_ACCOUNT_SID:'AC'+'a'.repeat(32),TWILIO_AUTH_TOKEN:'fixture-not-a-real-token',TWILIO_FROM_NUMBER:'+15550000002'};
-const make=(route='/api/sms/test',options={},owner=env.SMS_ADMIN_EMAIL)=>new Request('https://app.example'+route,{...options,headers:{'oai-authenticated-user-email':owner,'Origin':'https://app.example','Content-Type':'application/json',...options.headers}});
+const env={DB:localD1(),SMS_ADMIN_EMAIL:'owner@example.invalid',SMS_TEST_TO:'+15550000001',TWILIO_ACCOUNT_SID:'AC'+'a'.repeat(32),TWILIO_AUTH_TOKEN:'fixture-not-a-real-token',TWILIO_FROM_NUMBER:'+15550000002'};
+const make=(route='/api/sms/test',options={},owner=env.SMS_ADMIN_EMAIL)=>new Request('https://app.example'+route,{...options,headers:{'oai-authenticated-user-id':owner,'oai-authenticated-user-email':owner,'Origin':'https://app.example','Content-Type':'application/json',...options.headers}});
 const post=(id=crypto.randomUUID(),extra={})=>({method:'POST',body:JSON.stringify({requestId:id,...extra})});
 test('unauthenticated/public visitors cannot access SMS configuration',async()=>{
  const request=new Request('https://app.example/api/sms/status');const response=await handleSms(request,env);assert.equal(response.status,401);
  assert.equal((await handleSms(make('/api/sms/status',{},'someone@example.invalid'),env)).status,403);
 });
 test('missing provider credentials produce no outbound request and expose no secrets',async()=>{
- let calls=0;const fetcher=async()=>{calls++;throw Error('should not happen');};const missing={SMS_ADMIN_EMAIL:env.SMS_ADMIN_EMAIL,SMS_TEST_TO:env.SMS_TEST_TO};
+ let calls=0;const fetcher=async()=>{calls++;throw Error('should not happen');};const missing={DB:localD1(),SMS_ADMIN_EMAIL:env.SMS_ADMIN_EMAIL,SMS_TEST_TO:env.SMS_TEST_TO};
  const status=await (await handleSms(make('/api/sms/status'),missing,fetcher)).json();assert.equal(status.configured,false);assert.equal(status.recipient,'••• ••• 0001');
  assert.equal((await handleSms(make('/api/sms/test',post()),missing,fetcher)).status,503);assert.equal(calls,0);
 });
@@ -18,13 +19,13 @@ test('server rejects a client-selected recipient or message and cross-origin req
  assert.equal((await handleSms(make('/api/sms/test',{...post(),headers:{Origin:'https://other.example'}}),env)).status,403);
 });
 test('provider acceptance is not delivery; repeated request reuses receipt',async()=>{
- let calls=0;const id=crypto.randomUUID();const fixtureEnv={...env,SMS_ADMIN_EMAIL:'receipt@example.invalid'};
+ let calls=0;const id=crypto.randomUUID();const fixtureEnv={...env,DB:localD1(),SMS_ADMIN_EMAIL:'receipt@example.invalid'};
  const fetcher=async(url,options)=>{calls++;assert.equal(new URLSearchParams(options.body).get('To'),fixtureEnv.SMS_TEST_TO);assert.equal(new URLSearchParams(options.body).get('From'),fixtureEnv.TWILIO_FROM_NUMBER);assert.ok(new URLSearchParams(options.body).get('Body').endsWith(id));return Response.json({sid:'SM'+'b'.repeat(32),status:'queued'});};
  const a=await (await handleSms(make('/api/sms/test',post(id),fixtureEnv.SMS_ADMIN_EMAIL),fixtureEnv,fetcher)).json();assert.equal(a.ok,true);assert.equal(a.delivered,false);assert.equal(a.status,'queued');
  const b=await (await handleSms(make('/api/sms/test',post(id),fixtureEnv.SMS_ADMIN_EMAIL),fixtureEnv,fetcher)).json();assert.equal(b.sid,a.sid);assert.equal(calls,1);
 });
 test('ambiguous network outcome is retained without automatic retry',async()=>{
- const id=crypto.randomUUID();let calls=0;const fixtureEnv={...env,SMS_ADMIN_EMAIL:'uncertain@example.invalid'};const fetcher=async()=>{calls++;throw Error('network');};
+ const id=crypto.randomUUID();let calls=0;const fixtureEnv={...env,DB:localD1(),SMS_ADMIN_EMAIL:'uncertain@example.invalid'};const fetcher=async()=>{calls++;throw Error('network');};
  const a=await (await handleSms(make('/api/sms/test',post(id),fixtureEnv.SMS_ADMIN_EMAIL),fixtureEnv,fetcher)).json();assert.equal(a.code,'DELIVERY_UNKNOWN');
  await handleSms(make('/api/sms/test',post(id),fixtureEnv.SMS_ADMIN_EMAIL),fixtureEnv,fetcher);assert.equal(calls,1);
 });
@@ -34,7 +35,7 @@ test('delivery check verifies the authorized recipient and test body',async()=>{
  const denied=await handleSms(make(`/api/sms/receipt?sid=${sid}`),env,async()=>Response.json({sid,to:'+15550000009',body:message,status:'delivered'}));assert.equal(denied.status,403);
 });
 test('new trial flow uses an exact provider template and the recipient-assigned sender',async()=>{
- const trialEnv={...env,SMS_ADMIN_EMAIL:'trial@example.invalid',TWILIO_TRIAL_TEMPLATE:'sms_internal_alerts'};let sentBody='';
+ const trialEnv={...env,DB:localD1(),SMS_ADMIN_EMAIL:'trial@example.invalid',TWILIO_TRIAL_TEMPLATE:'sms_internal_alerts'};let sentBody='';
  const response=await handleSms(make('/api/sms/test',post(),trialEnv.SMS_ADMIN_EMAIL),trialEnv,async(url,opts)=>{const fields=new URLSearchParams(opts.body);sentBody=fields.get('Body');assert.equal(fields.get('From'),trialEnv.TWILIO_FROM_NUMBER);return Response.json({sid:'SM'+'d'.repeat(32),status:'queued'});});
  assert.equal(response.status,202);assert.equal(sentBody,'sms_internal_alerts');
  const receipt=await handleSms(make('/api/sms/receipt?requestId='+crypto.randomUUID(),{},trialEnv.SMS_ADMIN_EMAIL),trialEnv);assert.equal(receipt.status,400);

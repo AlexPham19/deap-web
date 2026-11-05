@@ -11,7 +11,7 @@ const port=Number(process.env.PORT||5175);
 http.createServer(async(req,res)=>{
   try{
     const url=`http://127.0.0.1:${port}${req.url}`;const chunks=[];for await(const c of req)chunks.push(c);
-    const headers=new Headers(req.headers);headers.set('oai-authenticated-user-email',env.SMS_ADMIN_EMAIL||'preview@example.invalid');
+    const headers=new Headers(req.headers);headers.set('oai-authenticated-user-id','preview-owner');headers.set('oai-authenticated-user-email',env.SMS_ADMIN_EMAIL||'preview@example.invalid');
     const request=new Request(url,{method:req.method,headers,...(req.method!=='GET'&&req.method!=='HEAD'?{body:Buffer.concat(chunks)}:{})});
     const response=await worker.fetch(request,{...env,SMS_ADMIN_EMAIL:env.SMS_ADMIN_EMAIL||'preview@example.invalid'},{});
     res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));

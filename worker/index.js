@@ -1,3 +1,4 @@
+import { handleTeam,teamActor,teamRole,teamAudit,teamError } from './team.js'; // @build-team-module
 import { handleCare } from './care.js'; // @build-care-module
 // Sites Worker ESM: the build injects compiled React assets into this module.
 // All SMS credentials and the allowed recipient are server-side environment values.
@@ -37,11 +38,13 @@ const providerFailure = body => ({ ok:false, code:'PROVIDER_REJECTED', providerC
 export async function handleSms(request, env, fetcher = fetch) {
   const url = new URL(request.url);
   const denied = authorize(request,env); if (denied) return denied;
+  let smsActor;try{smsActor=await teamActor(request,env);teamRole(smsActor,['admin']);}catch(e){return teamError(e);}
   const missing = configured(env);
   if (url.pathname === '/api/sms/status' && request.method === 'GET') return json({ ok:true, configured:missing.length===0, missing:[...new Set(missing)], provider:'Twilio', recipient:mask(env.SMS_TEST_TO), mode:env.TWILIO_TRIAL_TEMPLATE?'trial-template':'custom', message:env.TWILIO_TRIAL_TEMPLATE?'Twilio Trial template: Internal alerts. Twilio supplies the message text; this trial does not allow custom content.':TEST_TEXT, persistence:'local-demo-only', limitations:'The test sends a generic message only. Demo patient links do not synchronize to another device.' });
   if (!['/api/sms/test','/api/sms/receipt'].includes(url.pathname)) return json({ok:false,error:'Unknown SMS endpoint.'},404);
   if (missing.length) return json({ ok:false, code:'SMS_NOT_CONFIGURED', error:'SMS provider credentials are not configured. No message was sent.', missing },503);
   if (url.pathname === '/api/sms/receipt') {
+    await teamAudit(env.DB,smsActor,'sms.technical_status_checked');
     if (request.method !== 'GET') return json({ok:false,error:'Use GET for delivery status.'},405);
     const sid=url.searchParams.get('sid'); const requestId=url.searchParams.get('requestId');
     if ((!sid||!SID.test(sid)) && (!requestId||!UUID.test(requestId))) return json({ok:false,error:'A valid message SID or request reference is required.'},400);
@@ -68,6 +71,7 @@ export async function handleSms(request, env, fetcher = fetch) {
   // This bounded demo guard is per Worker isolate. It is not a distributed exactly-once guarantee.
   // A transport error is retained as uncertain; it must never trigger an automatic resend.
   if(attempts.size>=250)return json({ok:false,code:'RATE_LIMITED',error:'Demo attempt limit reached. No message was sent.'},429);
+  await teamAudit(env.DB,smsActor,'sms.technical_requested');
   latestAttemptByOwner.set(owner,now);
   const attempt=(async()=>{
     const form=new URLSearchParams({To:env.SMS_TEST_TO,Body:env.TWILIO_TRIAL_TEMPLATE||`${TEST_TEXT} Ref: ${input.requestId}`});
@@ -81,6 +85,7 @@ export async function handleSms(request, env, fetcher = fetch) {
     }catch{return {ok:false,code:'DELIVERY_UNKNOWN',requestId:input.requestId,error:'The connection ended before an outcome was confirmed. A message may already have been accepted. Check status before another attempt.'};}
   })();
   attempts.set(key,attempt);const result=await attempt;
+  await teamAudit(env.DB,smsActor,'sms.technical_result',null,{status:result.status||result.code||'unknown'});
   return json(result,result.ok?202:result.code==='DELIVERY_UNKNOWN'?504:502);
 }
 
@@ -88,8 +93,9 @@ export default {
   async fetch(request,env,ctx) {
     void ctx;
     const url=new URL(request.url);
+    if(url.pathname.startsWith('/api/team/'))return handleTeam(request,env);
     if(url.pathname.startsWith('/api/care/')||url.pathname.startsWith('/api/patient/'))return handleCare(request,env);
-    if(url.pathname.startsWith('/api/sms/'))return handleSms(request,env);
+    if(url.pathname.startsWith('/api/sms/'))return handleSms(request,env).catch(teamError);
     if(url.pathname.startsWith('/api/'))return json({ok:false,error:'Not found.'},404);
     if(request.method!=='GET'&&request.method!=='HEAD')return new Response('Method not allowed',{status:405});
     const asset=APP_ASSETS?.[url.pathname==='/'?'/index.html':url.pathname];

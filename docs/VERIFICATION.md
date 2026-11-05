@@ -57,3 +57,13 @@ Preview screenshots: `dashboard-desktop.jpg` and `patient-mobile.jpg`.
 - Added explicit `TWILIO_TRIAL_TEMPLATE=sms_internal_alerts` support without appending custom text. The recipient-assigned `TWILIO_FROM_NUMBER` is still required. Trial receipt verification checks the configured sender and recipient; uncertain trial sends need a message SID from Twilio logs.
 - Seven SMS tests plus four workflow tests now pass (11 total). Actual delivery remains unverified until the assigned trial sender is supplied and a request is accepted.
 
+
+## Team access extension — November 5, 2026
+
+- 23 tests pass, including real-SQL integration checks for invitation email binding/expiry/revocation; role and assignment checks on direct patient/link/SMS IDs; immediate membership disablement; admin isolation from unassigned clinical records; audit actor/time and tied-timestamp pagination; OTP missing-service lockout, expiry, send/check limits, token binding and policy-change invalidation; one-time legacy assignment bootstrap.
+- Browser preview with fictional local identity: created an assigned test patient, enabled the OTP requirement, opened a separate patient page and confirmed that no clinical context is shown while Verify is unconfigured. The send-code button is disabled with an explanation.
+- Browser preview: Team & access shows role controls, invitation fields, owner protection, patient assignments and activity log; saving assignments produces an actor/time event in the visible log.
+- The Vite development server now hosts the same local SQLite-backed APIs. Local authentication remains a fictional owner stub, excluded from production.
+- Screenshots: `team-activity.png`, `patient-otp-gate.png`.
+- Production runtime keys were inspected: no `TWILIO_VERIFY_SERVICE_SID` exists. Live OTP sending/checking is not verified and remains blocked pending provider service configuration. The OTP provider flow was tested with explicit provider fixtures only. No real invitation was sent to another person and no physical second member sign-in was performed.
+- Login/logout anchors use official Sites-owned routes. The log records authenticated workspace access and a sign-out request, not an assertion about identity-provider session completion.

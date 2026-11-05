@@ -4,7 +4,7 @@ import { localD1 } from '../scripts/local-d1.mjs';
 import { handleCare,careHash } from '../worker/care.js';
 const ORIGIN='https://care.example';
 const makeEnv=()=>({DB:localD1(),SMS_ADMIN_EMAIL:'owner@example.invalid',SMS_TEST_TO:'+15550000001',TWILIO_TRIAL_TEMPLATE:'sms_internal_alerts'});
-const request=(path,body,owner=true)=>new Request(ORIGIN+path,{method:body===undefined?'GET':'POST',headers:{Origin:ORIGIN,...(owner?{'oai-authenticated-user-email':'owner@example.invalid'}:{}),'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
+const request=(path,body,owner=true)=>new Request(ORIGIN+path,{method:body===undefined?'GET':'POST',headers:{Origin:ORIGIN,...(owner?{'oai-authenticated-user-id':'test-owner','oai-authenticated-user-email':'owner@example.invalid'}:{}),'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
 const call=async(env,path,body,owner=true,clock)=>{const response=await handleCare(request(path,body,owner),env,undefined,clock);return {status:response.status,body:await response.json()};};
 const newPatient=async env=>(await call(env,'/api/care/patients',{name:'Jordan Test'})).body.patient;
 const newLink=async(env,id,kind='assessment')=>(await call(env,'/api/care/links',{patientId:id,kind})).body.link;
